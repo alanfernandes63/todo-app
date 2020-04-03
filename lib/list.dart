@@ -10,27 +10,36 @@ class ListTodos extends StatefulWidget {
 }
 
 class _ListTodosState extends State<ListTodos> {
-  var todoList = null;
+  var todoList = [];
   final _todoController = TextEditingController();
+  var _loading = true;
 
-  void getTodos()async {
-    var response = await http.get(url);
-    todoList = json.decode(response.body);
-    print(todoList);
+  Future getTodos()async {
+    http.Response response = await http.get(url);
+    return json.decode(response.body);
   }
   
-  void addTodo()async{
+  Future addTodo()async{
 
     var todo = json.encode({"name":_todoController.text, "done":false});
-    print(todo);
     var response = await http.post(url, body: todo, headers: {"Content-type": "application/json"});
-    print(response.statusCode);
+    return json.decode(response.body);
+  }
+
+  Future doneTodo(done, id) async {
+    http.Response response = await http.put("${url}?id=${id}&done=${done}");
+    return response;
   }
 
   @override
   void initState(){
-    getTodos();
     super.initState();
+    getTodos().then((map){
+      setState(() {
+        todoList = map;
+        _loading = false;
+      });
+    });
   }
 
   @override
@@ -41,7 +50,7 @@ class _ListTodosState extends State<ListTodos> {
         children: <Widget>[
           Container(
             padding: EdgeInsets.fromLTRB(17.0, 1.0, 7.0, 1.0),
-            child: Row(
+            child:Row(
               children: <Widget>[
                 Expanded(
                   child: TextField(
@@ -55,18 +64,38 @@ class _ListTodosState extends State<ListTodos> {
                   color: Colors.blueAccent,
                   child: Text("ADD"),
                   textColor: Colors.white,
-                  onPressed: addTodo,
+                  onPressed: (){
+                    addTodo().then((map){
+                      setState(() {
+                        todoList.add(map);
+                      });
+                    });
+                  },
                 ),
               ],
             ),
           ),
+          _loading ? Container(
+              padding: EdgeInsets.only(top: 100.0),
+              child: Center(child: CircularProgressIndicator())):
           Expanded(
-            child: ListView.builder(
+            child:ListView.builder(
                 itemCount: todoList.length,
                 itemBuilder: (contex, index){
                   return CheckboxListTile(
                     title: Text(todoList[index]["name"]),
                     value: todoList[index]["done"],
+                    onChanged: (done){
+                      doneTodo(done, todoList[index]["id"]).then(
+                          (response){
+                            print(response.statusCode == 200);
+                            setState(() {
+                              todoList[index]["done"] = !todoList[index]["done"];
+
+                            });
+                          }
+                      );
+                    },
                     secondary: CircleAvatar(
                       child: Icon(
                         todoList[index]["done"] ? Icons.check : Icons.error
