@@ -71,7 +71,7 @@ class _ListTodosState extends State<ListTodos> {
   }
 
   Future getTodos()async {
-    http.Response response = await http.get(url);
+    http.Response response = await http.get("${url}?type=all");
     return json.decode(response.body);
   }
 
@@ -82,12 +82,12 @@ class _ListTodosState extends State<ListTodos> {
   }
 
   Future doneTodo(done, id) async {
-    http.Response response = await http.put("${url}?id=${id}&done=${done}");
+    http.Response response = await http.put("${url}/${id}?done=${done}");
     return response;
   }
   
   Future deleteTodo(id)async{
-    http.Response response = await http.delete("${url}?id=${id}");
+    http.Response response = await http.delete("${url}/${id}");
     return response;
   }
   Widget buildItem(context, index){
