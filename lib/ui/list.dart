@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import "dart:convert";
 import 'dart:async';
+import 'todoItem.dart';
+import 'endpoints.dart';
 
-const url = "https://tarefas-teste.herokuapp.com/api/v1/todos";
 class ListTodos extends StatefulWidget {
   @override
   _ListTodosState createState() => _ListTodosState();
@@ -50,6 +51,7 @@ class _ListTodosState extends State<ListTodos> {
                     addTodo().then((map){
                       setState(() {
                         todoList.add(map);
+                        _todoController.text = "";
                       });
                     });
                   },
@@ -63,7 +65,7 @@ class _ListTodosState extends State<ListTodos> {
           Expanded(
             child:ListView.builder(
                 itemCount: todoList.length,
-                itemBuilder: buildItem),
+                itemBuilder: (context, index) =>TodoItem(todoList[index], index)),
           )
         ],
       )
@@ -71,62 +73,19 @@ class _ListTodosState extends State<ListTodos> {
   }
 
   Future getTodos()async {
-    http.Response response = await http.get("${url}?type=all");
+    http.Response response = await http.get("${EndPoint.URL}?type=all");
     return json.decode(response.body);
   }
 
   Future addTodo()async{
+    setState(() {
+      _loading = true;
+    });
     var todo = json.encode({"name":_todoController.text, "done":false});
-    var response = await http.post(url, body: todo, headers: {"Content-type": "application/json"});
+    var response = await http.post(EndPoint.URL, body: todo, headers: {"Content-type": "application/json"});
+    setState(() {
+      _loading =false;
+    });
     return json.decode(response.body);
-  }
-
-  Future doneTodo(done, id) async {
-    http.Response response = await http.put("${url}/${id}?done=${done}");
-    return response;
-  }
-  
-  Future deleteTodo(id)async{
-    http.Response response = await http.delete("${url}/${id}");
-    return response;
-  }
-  Widget buildItem(context, index){
-    return Dismissible(
-          key: Key(DateTime.now().millisecondsSinceEpoch.toString()),
-          background: Container(
-          color: Colors.red,
-          child: Align(
-          alignment: Alignment(-0.9, 0.0),
-          child: Icon(Icons.delete, color: Colors.white,),
-          ),
-        ),
-        direction: DismissDirection.startToEnd,
-        onDismissed: (direction){
-          deleteTodo(todoList[index]["id"]).then(
-              (response){
-                print(response.statusCode);
-              }
-          );
-    },
-    child: CheckboxListTile(
-        title: Text(todoList[index]["name"]),
-        value: todoList[index]["done"],
-        onChanged: (done){
-          doneTodo(done, todoList[index]["id"]).then(
-                  (response){
-                print(response.statusCode == 200);
-                setState(() {
-                  todoList[index]["done"] = !todoList[index]["done"];
-                });
-              }
-          );
-        },
-        secondary: CircleAvatar(
-          child: Icon(
-              todoList[index]["done"] ? Icons.check : Icons.error
-          ),
-        ),
-      )
-    );
-  }
+  }  
 }
